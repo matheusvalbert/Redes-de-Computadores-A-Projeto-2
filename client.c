@@ -37,6 +37,12 @@ struct infocliente {
 	int ns;
 };
 
+struct grupos {
+
+	char nome[20], pessoas[20][20];
+	int numero;
+};
+
 
 struct recebido mensagensRecebidas[200];
 int mensagensRecebidasCount = 0;
@@ -46,6 +52,8 @@ void INThandler(int);
 int p2ps;
 struct agenda contatos[20];
 int numeroContatos = 0;
+struct grupos classificacaoGrupo[20];
+int numeroDeGrupos = 0;
 
 void enviarInformacoes(int s) {
 
@@ -119,34 +127,84 @@ void *tratamento(void *informacoes) {
 	int len1;
     int len2;
     char numeroEnviar[20], mensagemParaContato[20];
+    int funcao;
 
-    if (recv(ns, &len2, sizeof(int), 0) == -1) {
+    if (recv(ns, &funcao, sizeof(int), 0) == -1) {
 		
 		perror("Recv()");
 		exit(6);
 	}
 
-	if (recv(ns, numeroEnviar, len2, 0) == -1) {
-		
-		perror("Recv()");
-		exit(6);
-	}
+	if(funcao == 1) {
 
-	if (recv(ns, &len1, sizeof(int), 0) == -1) {
-		
-		perror("Recv()");
-		exit(6);
-	}
+	    if (recv(ns, &len2, sizeof(int), 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
 
-    if (recv(ns, mensagemParaContato, len1, 0) == -1) {
-		
-		perror("Recv()");
-		exit(6);
-	}
+		if (recv(ns, numeroEnviar, len2, 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
 
-	strcpy(mensagensRecebidas[mensagensRecebidasCount].nome, numeroEnviar);
-	strcpy(mensagensRecebidas[mensagensRecebidasCount].mensagem, mensagemParaContato);
-	mensagensRecebidasCount++;
+		if (recv(ns, &len1, sizeof(int), 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+	    if (recv(ns, mensagemParaContato, len1, 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+		strcpy(mensagensRecebidas[mensagensRecebidasCount].nome, numeroEnviar);
+		strcpy(mensagensRecebidas[mensagensRecebidasCount].mensagem, mensagemParaContato);
+		mensagensRecebidasCount++;
+	}
+	else if(funcao == 2) {
+
+		if (recv(ns, &len1, sizeof(int), 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+	    if (recv(ns, mensagemParaContato, len1, 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+		if (recv(ns, &classificacaoGrupo[numeroDeGrupos].numero, sizeof(int), 0) == -1) {
+				
+			perror("Recv()");
+			exit(6);
+		}
+
+		for (int i = 0; i < classificacaoGrupo[numeroDeGrupos].numero; i++) {
+
+			len2 = strlen(classificacaoGrupo[numeroDeGrupos].pessoas[i]);
+
+			if (recv(ns, &len2, sizeof(int), 0) == -1) {
+				
+				perror("Recv()");
+				exit(6);
+			}
+
+			if (recv(ns, &classificacaoGrupo[numeroDeGrupos].pessoas[i], len2, 0) == -1) {
+				
+				perror("Recv()");
+				exit(6);
+			}
+		}
+
+		strcpy(classificacaoGrupo[numeroDeGrupos].nome, mensagemParaContato);
+		numeroDeGrupos++;
+	}
 
 	close(ns);
 }
@@ -282,6 +340,14 @@ void enviaMensagem(char ip[], int porta, char mensagemParaContato[]) {
 
     int len1 = strlen(mensagemParaContato);
     int len2 = strlen(numero);
+    int funcao = 1;
+
+    if (send(s, &funcao, sizeof(int), 0) == -1) {
+		
+		perror("Recv()");
+		exit(6);
+	}
+	
 
     if (send(s, &len2, sizeof(int), 0) == -1) {
 		
@@ -395,6 +461,233 @@ void visualizarMensagemContato() {
 	}
 }
 
+void enviarNomeGrupo(char nomeGrupo[], char ip[], int porta) {
+
+
+	unsigned short port;             
+	struct hostent *hostnm;    
+    struct sockaddr_in server;
+    int s;
+
+	hostnm = gethostbyname(ip);
+    if (hostnm == (struct hostent *) 0) {
+
+        fprintf(stderr, "Gethostbyname failed\n");
+        exit(2);
+    }
+
+    port = (unsigned short) porta;
+
+    /*
+     * Define o endereco IP e a porta do servidor
+     */
+    server.sin_family      = AF_INET;
+    server.sin_port        = htons(port);
+    server.sin_addr.s_addr = *((unsigned long *)hostnm->h_addr);
+
+    /*
+     * Cria um socket TCP (stream)
+     */
+    if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+
+        perror("Socket()");
+        exit(3);
+   	}
+
+    /* 
+	 * Estabelece conexao com o servidor 
+	 */
+    if (connect(s, (struct sockaddr *)&server, sizeof(server)) < 0) {
+
+        perror("Connect()");
+        exit(4);
+    }
+
+	int len, op = 2;
+
+	if (send(s, &op, sizeof(int), 0) == -1) {
+			
+		perror("Recv()");
+		exit(6);
+	}
+
+	len = strlen(nomeGrupo);
+
+	if (send(s, &len, sizeof(int), 0) == -1) {
+			
+		perror("Recv()");
+		exit(6);
+	}
+
+	if (send(s, nomeGrupo, len, 0) == -1) {
+			
+		perror("Recv()");
+		exit(6);
+	}
+
+	if (send(s, &classificacaoGrupo[numeroDeGrupos].numero, sizeof(int), 0) == -1) {
+			
+		perror("Recv()");
+		exit(6);
+	}
+
+	for (int i = 0; i < classificacaoGrupo[numeroDeGrupos].numero; i++) {
+
+		len = strlen(classificacaoGrupo[numeroDeGrupos].pessoas[i]);
+
+		if (send(s, &len, sizeof(int), 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+		if (send(s, &classificacaoGrupo[numeroDeGrupos].pessoas[i], len, 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+	}
+}
+
+void criarGrupo(int s) {
+
+	int nPessoas, numeroPessoa, numLen, numLen2, op = 2, porta, j = 0, vetor[20];
+	char nomeGrupo[20], ip[20], num[20];
+
+	printf("Digite o nome do grupo: ");
+
+	__fpurge(stdin);
+	fgets(nomeGrupo, sizeof(nomeGrupo), stdin);
+
+	printf("Numero de pessoas no grupo: ");
+
+	scanf("%d", &nPessoas);
+
+	printf("Pessoas:\n");
+
+	for (int i = 0; i < numeroContatos; i++) {
+		
+		printf("%d - %s\n", i+1, contatos[i].nome);
+	}
+
+	printf("Digite os numeros das pessoas que deseja adionar ao grupo: ");
+
+	for (int i = 0; i < nPessoas; i++) {
+		
+		scanf("%d", &numeroPessoa);
+
+		vetor[i] = numeroPessoa;
+
+		if (send(s, &op, sizeof(int), 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+		strcpy(num, contatos[numeroPessoa - 1].numero);
+
+		numLen = strlen(num);
+
+		if (send(s, &numLen, sizeof(int), 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+		if (send(s, num, numLen, 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+		if (recv(s, &numLen2, sizeof(int), 0) == -1) {
+				
+			perror("Send()");
+			exit(6);
+		}
+
+		if (recv(s, ip, numLen2, 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+		if (recv(s, &porta, sizeof(int), 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+		ip[numLen2] = '\0';
+		strcpy(classificacaoGrupo[numeroDeGrupos].pessoas[j], num);
+		j++;
+		classificacaoGrupo[numeroDeGrupos].numero = nPessoas + 1;
+	}
+
+	strcpy(classificacaoGrupo[numeroDeGrupos].pessoas[j], numero);
+
+	for (int i = 0; i < nPessoas; i++) {
+
+		if (send(s, &op, sizeof(int), 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+		strcpy(num, contatos[vetor[i] - 1].numero);
+
+		numLen = strlen(num);
+
+		if (send(s, &numLen, sizeof(int), 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+		if (send(s, num, numLen, 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+		if (recv(s, &numLen2, sizeof(int), 0) == -1) {
+				
+			perror("Send()");
+			exit(6);
+		}
+
+		if (recv(s, ip, numLen2, 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+
+		if (recv(s, &porta, sizeof(int), 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+		}
+		ip[numLen2] = '\0';
+
+		enviarNomeGrupo(nomeGrupo, ip, porta);
+	}
+
+	strcpy(classificacaoGrupo[numeroDeGrupos].nome, nomeGrupo);
+	numeroDeGrupos++;
+}
+
+void enviarMensagemGrupo() {
+
+	for (int i = 0; i < numeroDeGrupos; ++i) {
+
+		printf("Grupo: %s\n", classificacaoGrupo[i].nome);
+
+		for(int j = 0; j < classificacaoGrupo[i].numero; j++) {
+
+			printf("Participantes: %s\n", classificacaoGrupo[i].pessoas[j]);
+		}
+	}
+}
+
 void *interface(void *arg1) {
 
 	int s1 = *((int *) arg1);
@@ -432,6 +725,7 @@ void *interface(void *arg1) {
 				contato();
 				break;
 			case 2:
+				criarGrupo(s1);
 				break;
 			case 3:
 				enviarMensagemContato(s1);
@@ -442,6 +736,7 @@ void *interface(void *arg1) {
 			case 5:
 				break;
 			case 6:
+				enviarMensagemGrupo();
 				break;
 			case 0:
 				break;
@@ -506,8 +801,6 @@ int main(int argc, char **argv) {
         perror("Connect()");
         exit(4);
     }
-
-    printf("Numero main : %d\n", s);
 
     *arg = s;
     *arg1 = s;
