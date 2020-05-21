@@ -18,6 +18,7 @@
 struct recebido {
 	
 	char nome[20], mensagem[100];
+	int flag;
 };
 
 struct agenda {
@@ -39,7 +40,7 @@ struct infocliente {
 
 struct grupos {
 
-	char nome[20], pessoas[20][20], mensagens[100][100];
+	char nome[20], pessoas[20][20], mensagens[100][100], msgEnv[100][100];
 	int numero, numeroMsg;
 };
 
@@ -126,7 +127,7 @@ void *tratamento(void *informacoes) {
 
 	int len1;
     int len2;
-    char numeroEnviar[20], mensagemParaContato[20], mensagemGrupo[100], nomeGrupo[20];
+    char numeroEnviar[20], mensagemParaContato[20], mensagemGrupo[100], nomeGrupo[20], nCont[20];
     int funcao;
 
     if (recv(ns, &funcao, sizeof(int), 0) == -1) {
@@ -163,6 +164,7 @@ void *tratamento(void *informacoes) {
 
 		strcpy(mensagensRecebidas[mensagensRecebidasCount].nome, numeroEnviar);
 		strcpy(mensagensRecebidas[mensagensRecebidasCount].mensagem, mensagemParaContato);
+		mensagensRecebidas[mensagensRecebidasCount].flag = 0;
 		mensagensRecebidasCount++;
 	}
 	else if(funcao == 2) {
@@ -237,11 +239,24 @@ void *tratamento(void *informacoes) {
 			exit(6);
 		}
 
+		if (recv(ns, &len2, sizeof(int), 0) == -1) {
+				
+			perror("Recv()");
+			exit(6);
+		}
+
+		if (recv(ns, nCont, len2, 0) == -1) {
+				
+			perror("Recv()");
+			exit(6);
+		}
+
 		for(int i = 0; i < numeroDeGrupos; i++) {
 
 			if(strcmp(nomeGrupo, classificacaoGrupo[i].nome) == 0) {
 
 				strcpy(classificacaoGrupo[i].mensagens[classificacaoGrupo[i].numeroMsg], mensagemGrupo);
+				strcpy(classificacaoGrupo[i].msgEnv[classificacaoGrupo[i].numeroMsg], nCont);
 				classificacaoGrupo[i].numeroMsg++;
 			}
 		}
@@ -481,9 +496,22 @@ void enviarMensagemContato(int s) {
 	}
 
 	enviaMensagem(ip, porta, mensagemParaContato);
+
+	strcpy(mensagensRecebidas[mensagensRecebidasCount].nome, num);
+	strcpy(mensagensRecebidas[mensagensRecebidasCount].mensagem, mensagemParaContato);
+	mensagensRecebidas[mensagensRecebidasCount].flag = 1;
+	mensagensRecebidasCount++;
 }
 
 void visualizarMensagemContato() {
+
+	int printAux[200];
+	char nomeAux[20];
+
+	for (int i = 0; i < mensagensRecebidasCount; i++) {
+
+		printAux[i] = 0;
+	}
 
 	for (int i = 0; i < numeroContatos; i++) {
 
@@ -497,8 +525,26 @@ void visualizarMensagemContato() {
 	}
 
 	for (int i = 0; i < mensagensRecebidasCount; ++i) {
+
+		if(printAux[i] == 0) {
+
+			strcpy(nomeAux, mensagensRecebidas[i].nome);
+			printf("Chat com %s:\n", nomeAux);
+		}
+
+		for(int j = 0; j < mensagensRecebidasCount; j++) {
+
+			if(strcmp(mensagensRecebidas[j].nome, nomeAux) == 0 && printAux[j] == 0) {
+				if(mensagensRecebidas[j].flag == 0)
+					printf("%s: %s\n", mensagensRecebidas[j].nome, mensagensRecebidas[j].mensagem);
+				else
+					printf("Eu: %s\n", mensagensRecebidas[j].mensagem);
+				printAux[j] = 1;
+
+			}
+		}
 		
-		printf("Nome: %s - mensagem %s\n", mensagensRecebidas[i].nome, mensagensRecebidas[i].mensagem);
+		//printf("Nome: %s - mensagem: %s - flag: %d\n", mensagensRecebidas[i].nome, mensagensRecebidas[i].mensagem, mensagensRecebidas[i].flag);
 	}
 }
 
@@ -792,6 +838,20 @@ void enviarGrupo(char ip[], int porta, char mensagemGrupo[], char nomeGrupo[]) {
 		perror("Recv()");
 		exit(6);
 	}
+
+	len = strlen(numero);
+
+	if (send(s, &len, sizeof(len), 0) == -1) {
+			
+		perror("Recv()");
+		exit(6);
+	}
+
+	if (send(s, numero, len, 0) == -1) {
+			
+		perror("Recv()");
+		exit(6);
+	}
 }
 
 void enviarMensagemGrupo(int s) {
@@ -816,8 +876,6 @@ void enviarMensagemGrupo(int s) {
 	fgets(mensagemGrupo, sizeof(mensagemGrupo), stdin);
 
 	for (int i = 0; i < classificacaoGrupo[numero - 1].numero; i++) {
-		
-		printf("%s\n", classificacaoGrupo[numero - 1].pessoas[i]);
 
 		if (send(s, &op, sizeof(int), 0) == -1) {
 			
@@ -866,13 +924,30 @@ void enviarMensagemGrupo(int s) {
 
 void visualizarMensagemGrupo() {
 
+	for (int k = 0; k < numeroDeGrupos; k++) {
+
+		for (int i = 0; i < classificacaoGrupo[k].numero; i++) {
+
+			for (int j = 0; j < classificacaoGrupo[k].numeroMsg; j++) {
+
+				if(strcmp(contatos[i].numero, classificacaoGrupo[k].msgEnv[j]) == 0) {
+
+					strcpy(classificacaoGrupo[k].msgEnv[j], contatos[i].nome);
+				}
+			}
+		}
+	}
+
 	for (int i = 0; i < numeroDeGrupos; ++i) {
 
 		printf("Grupo: %s\n", classificacaoGrupo[i].nome);
 
 		for(int j = 0; j < classificacaoGrupo[i].numeroMsg; j++) {
 
-			printf("Mensagem: %s\n", classificacaoGrupo[i].mensagens[j]);
+			if(strcmp(classificacaoGrupo[i].msgEnv[j], numero) == 0)
+				printf("Eu: %s\n", classificacaoGrupo[i].mensagens[j]);				
+			else
+				printf("%s: %s\n", classificacaoGrupo[i].msgEnv[j], classificacaoGrupo[i].mensagens[j]);
 		}
 	}
 }
