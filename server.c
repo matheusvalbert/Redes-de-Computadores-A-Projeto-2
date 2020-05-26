@@ -40,7 +40,8 @@ void *tratamento(void *informacoes) {
 	char num[20];
 	char ip[20];
 	int porta;
-
+	int i, flag;
+	
 	while(1) {
 
 
@@ -62,7 +63,8 @@ void *tratamento(void *informacoes) {
 			contCount++;
 		}
 		else if(opcao == 2) {
-
+			
+			env = -1;
 			if (recv(ns, &numLen, sizeof(int), 0) == -1) {
 			
 				perror("Recv()");
@@ -75,35 +77,82 @@ void *tratamento(void *informacoes) {
 				exit(6);
 			}
 
-			for (int i = 0; i < contCount; ++i) {
+			for (i = 0; i < contCount; ++i) {
 
 				if(strcmp(cont[i].numero, num) == 0) {
 
 					env = i;
+					printf("Env %i\n",env);
 				}
 			}
-
-			strcpy(ip, cont[env].ip);
-			porta = cont[env].porta;
-			numLen = strlen(ip);
-
-			if (send(ns, &numLen, sizeof(int), 0) == -1) {
+			if(env != -1) {
+				strcpy(ip, cont[env].ip);
+				porta = cont[env].porta;
+				numLen = strlen(ip);
+					
+				if (send(ns, &numLen, sizeof(int), 0) == -1) {
 			
-				perror("Send()");
-				exit(6);
-			}			
+					perror("Send()");
+					exit(6);
+				}			
 
-			if (send(ns, ip, numLen, 0) == -1) {
+				if (send(ns, ip, numLen, 0) == -1) {
 			
-				perror("Send()");
+					perror("Send()");
+					exit(6);
+				}
+
+				if (send(ns, &porta, sizeof(int), 0) == -1) {
+			
+					perror("Send()");
+					exit(6);
+				}
+				printf("Enviados os dados sobre num %s\n", num);
+			}
+			if(env == -1) {
+			
+				numLen = -1;
+				if (send(ns, &numLen, sizeof(int), 0) == -1) {
+			
+					perror("Send()");
+					exit(6);
+				}
+			} 
+	
+		}
+		else if(opcao == 3) {
+			 
+			if (recv(ns, &numLen, sizeof(int), 0) == -1) {
+			
+				perror("Recv()");
 				exit(6);
 			}
 
-			if (send(ns, &porta, sizeof(int), 0) == -1) {
-			
-				perror("Send()");
+			if (recv(ns, num, numLen, 0) == -1) {
+				
+				perror("Recv()");
 				exit(6);
+			}	
+			i = 0;
+			flag = 0;
+			while(i < contCount) {///1 2 3 contCount 3
+				
+				if(flag == 0 && strcmp(cont[i].numero,num) == 0) {
+					flag = 1;				
+				}
+				if(flag == 1 && i < contCount - 1) {
+					strcpy(cont[i].numero,cont[i + 1].numero);
+					strcpy(cont[i].ip,cont[i + 1].ip);
+					cont[i].porta = cont[i + 1].porta;
+				}
+				i++;
 			}
+			contCount--;
+			printf("Numero removido: %s\n", num);
+			/*for(i=0;i<contCount;i++) {
+				printf("%i - %s\n",i,cont[i].numero);
+			}*/
+			break;
 		}
 	}
 }

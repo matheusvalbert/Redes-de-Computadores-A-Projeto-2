@@ -138,12 +138,13 @@ void *tratamento(void *informacoes) {
 
 	if(funcao == 1) {
 
-	    if (recv(ns, &len2, sizeof(int), 0) == -1) {
+	   	 if (recv(ns, &len2, sizeof(int), 0) == -1) {
 			
 			perror("Recv()");
 			exit(6);
 		}
 
+		
 		if (recv(ns, numeroEnviar, len2, 0) == -1) {
 			
 			perror("Recv()");
@@ -156,7 +157,7 @@ void *tratamento(void *informacoes) {
 			exit(6);
 		}
 
-	    if (recv(ns, mensagemParaContato, len1, 0) == -1) {
+	   	if (recv(ns, mensagemParaContato, len1, 0) == -1) {
 			
 			perror("Recv()");
 			exit(6);
@@ -483,24 +484,29 @@ void enviarMensagemContato(int s) {
 		exit(6);
 	}
 
-	if (recv(s, ip, numLen, 0) == -1) {
+	if(numLen != -1) {
+
+		if (recv(s, ip, numLen, 0) == -1) {
 		
-		perror("Recv()");
-		exit(6);
-	}
+			perror("Recv()");
+			exit(6);
+		}
 
-	if (recv(s, &porta, sizeof(int), 0) == -1) {
+		if (recv(s, &porta, sizeof(int), 0) == -1) {
 		
-		perror("Recv()");
-		exit(6);
+			perror("Recv()");
+			exit(6);
+		}
+
+		enviaMensagem(ip, porta, mensagemParaContato);
+
+		strcpy(mensagensRecebidas[mensagensRecebidasCount].nome, num);
+		strcpy(mensagensRecebidas[mensagensRecebidasCount].mensagem, mensagemParaContato);
+		mensagensRecebidas[mensagensRecebidasCount].flag = 1;
+		mensagensRecebidasCount++;
 	}
-
-	enviaMensagem(ip, porta, mensagemParaContato);
-
-	strcpy(mensagensRecebidas[mensagensRecebidasCount].nome, num);
-	strcpy(mensagensRecebidas[mensagensRecebidasCount].mensagem, mensagemParaContato);
-	mensagensRecebidas[mensagensRecebidasCount].flag = 1;
-	mensagensRecebidasCount++;
+	else
+		printf("O contato: %s nao esta conectado no momento.\n", contatos[numeroDoContato - 1].nome);
 }
 
 void visualizarMensagemContato() {
@@ -657,7 +663,7 @@ void criarGrupo(int s) {
 		printf("%d - %s\n", i+1, contatos[i].nome);
 	}
 
-	printf("Digite os numeros das pessoas que deseja adionar ao grupo: ");
+	printf("Digite os numeros das pessoas que deseja adicionar ao grupo: ");
 
 	for (int i = 0; i < nPessoas; i++) {
 		
@@ -665,47 +671,8 @@ void criarGrupo(int s) {
 
 		vetor[i] = numeroPessoa;
 
-		if (send(s, &op, sizeof(int), 0) == -1) {
-			
-			perror("Recv()");
-			exit(6);
-		}
+		strcpy(classificacaoGrupo[numeroDeGrupos].pessoas[j], contatos[numeroPessoa - 1].numero);
 
-		strcpy(num, contatos[numeroPessoa - 1].numero);
-
-		numLen = strlen(num);
-
-		if (send(s, &numLen, sizeof(int), 0) == -1) {
-			
-			perror("Recv()");
-			exit(6);
-		}
-
-		if (send(s, num, numLen, 0) == -1) {
-			
-			perror("Recv()");
-			exit(6);
-		}
-
-		if (recv(s, &numLen2, sizeof(int), 0) == -1) {
-				
-			perror("Send()");
-			exit(6);
-		}
-
-		if (recv(s, ip, numLen2, 0) == -1) {
-			
-			perror("Recv()");
-			exit(6);
-		}
-
-		if (recv(s, &porta, sizeof(int), 0) == -1) {
-			
-			perror("Recv()");
-			exit(6);
-		}
-		ip[numLen2] = '\0';
-		strcpy(classificacaoGrupo[numeroDeGrupos].pessoas[j], num);
 		j++;
 		classificacaoGrupo[numeroDeGrupos].numero = nPessoas + 1;
 	}
@@ -766,15 +733,15 @@ void enviarGrupo(char ip[], int porta, char mensagemGrupo[], char nomeGrupo[]) {
 
 	unsigned short port;             
 	struct hostent *hostnm;    
-    struct sockaddr_in server;
-    int s;
+   	struct sockaddr_in server;
+    	int s;
 
 	hostnm = gethostbyname(ip);
-    if (hostnm == (struct hostent *) 0) {
+    	if (hostnm == (struct hostent *) 0) {
 
-        fprintf(stderr, "Gethostbyname failed\n");
-        exit(2);
-    }
+      	  fprintf(stderr, "Gethostbyname failed\n");
+     	   exit(2);
+   	}
 
     port = (unsigned short) porta;
 
@@ -858,7 +825,7 @@ void enviarMensagemGrupo(int s) {
 
 	int numero, numLen, numLen2, porta, op = 2;
 	char ip[20], num[20], mensagemGrupo[100];
-
+	int flag = 0, vetor[20];
 	printf("grupos:\n");
 
 	for(int i = 0; i < numeroDeGrupos; i++) {
@@ -905,20 +872,33 @@ void enviarMensagemGrupo(int s) {
 			exit(6);
 		}
 
-		if (recv(s, ip, numLen2, 0) == -1) {
-			
-			perror("Recv()");
-			exit(6);
-		}
+		if(numLen2 != -1) {
 
-		if (recv(s, &porta, sizeof(int), 0) == -1) {
+			if (recv(s, ip, numLen2, 0) == -1) {
 			
-			perror("Recv()");
-			exit(6);
-		}
-		ip[numLen2] = '\0';
+				perror("Recv()");
+				exit(6);
+			}
 
-		enviarGrupo(ip, porta, mensagemGrupo, classificacaoGrupo[numero - 1].nome);
+			if (recv(s, &porta, sizeof(int), 0) == -1) {
+			
+				perror("Recv()");
+				exit(6);
+			}
+			ip[numLen2] = '\0';
+
+			enviarGrupo(ip, porta, mensagemGrupo, classificacaoGrupo[numero - 1].nome);
+		}
+		else {
+			vetor[flag] = i;
+			flag++;
+		}
+	}
+	if(flag > 0) {
+		printf("O(s) contato(s) nao conectado(s) sao:\n");
+		for(int i = 0; i < flag; i++) {
+			printf("%s\n", classificacaoGrupo[numero - 1].pessoas[vetor[i]]);
+		}
 	}
 }
 
@@ -952,13 +932,37 @@ void visualizarMensagemGrupo() {
 	}
 }
 
+void desconectar(int s, char numero[]) {
+	
+	int len, op = 3;	
+	
+	if (send(s, &op, sizeof(int), 0) == -1) {
+			
+			perror("Recv()");
+			exit(6);
+	}
+	len = strlen(numero);
+
+	if (send(s, &len, sizeof(int), 0) == -1) {
+			
+		perror("Recv()");
+		exit(6);
+	}
+
+	if (send(s, numero, len, 0) == -1) {
+			
+		perror("Recv()");
+		exit(6);
+	}
+}
+
 void *interface(void *arg1) {
 
 	int s1 = *((int *) arg1);
 	free(arg1);
-    int opcao;
-    char ip[20], porta[20];
-
+    	int opcao;
+    	char ip[20], porta[20];
+	int flag = 0;
 
 	printf("Digite o numero de telefone: ");
 
@@ -969,7 +973,7 @@ void *interface(void *arg1) {
 	pthread_mutex_unlock(&mutexNumero);
 
 
-	while(1) {
+	while(flag == 0) {
 
 		printf("1 - Adicionar contato\n");
 		printf("2 - Criar grupo\n");
@@ -1004,6 +1008,8 @@ void *interface(void *arg1) {
 				visualizarMensagemGrupo();
 				break;
 			case 0:
+				desconectar(s1,numero);
+				flag = 1;
 				break;
 		}
 	}
@@ -1011,7 +1017,7 @@ void *interface(void *arg1) {
 
 int main(int argc, char **argv) {
 
-	pthread_t tratarClientes;
+	pthread_t tratarClientes[2];
 	unsigned short port;             
 	struct hostent *hostnm;    
     struct sockaddr_in server; 
@@ -1070,19 +1076,20 @@ int main(int argc, char **argv) {
     *arg = s;
     *arg1 = s;
 
-    tc = pthread_create(&tratarClientes, NULL, p2pEnvio, arg);
+    tc = pthread_create(&tratarClientes[0], NULL, p2pEnvio, arg);
     if (tc) {
      	printf("ERRO: impossivel criar um thread consumidor\n");
       	exit(-1);
     }
 
-    tc = pthread_create(&tratarClientes, NULL, interface, arg1);
+
+    tc = pthread_create(&tratarClientes[1], NULL, interface, arg1);
     if (tc) {
      	printf("ERRO: impossivel criar um thread consumidor\n");
       	exit(-1);
     }
-
-    pthread_exit(NULL);
+	pthread_join(tratarClientes[1], NULL);
+    	pthread_cancel(tratarClientes[0]);
 	return 0;
 }
 
