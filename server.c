@@ -135,7 +135,7 @@ void *tratamento(void *informacoes) {
 			}	
 			i = 0;
 			flag = 0;
-			while(i < contCount) {///1 2 3 contCount 3
+			while(i < contCount) {
 				
 				if(flag == 0 && strcmp(cont[i].numero,num) == 0) {
 					flag = 1;				
