@@ -22,13 +22,13 @@ struct infocliente {
 };
 
 pthread_mutex_t mutex;
-struct contato cont[20];
+struct contato cont[50];
 int contCount = 0;
 void INThandler(int);
 int s;
 
 void *tratamento(void *informacoes) {
-
+	struct contato contato_temp;
 	struct sockaddr_in client;
 	struct infocliente info;
 	int ns;
@@ -40,7 +40,8 @@ void *tratamento(void *informacoes) {
 	char num[20];
 	char ip[20];
 	int porta;
-
+	int i, flag;
+	
 	while(1) {
 
 
@@ -50,19 +51,41 @@ void *tratamento(void *informacoes) {
 			exit(6);
 		}
 
-		if(opcao == 1){
+		if(opcao == 1){//Conexão de usuario
 
-			if (recv(ns, &cont[contCount], sizeof(cont), 0) == -1) {
+			pthread_mutex_lock(&mutex);
+			flag = 1;
+			if (recv(ns, &contato_temp, sizeof(contato_temp), 0) == -1) {
 			
 				perror("Recv()");
 				exit(6);
 			}
-
-			printf("Numero: %s - IP: %s - Porta: %d\n", cont[contCount].numero, cont[contCount].ip, cont[contCount].porta);
-			contCount++;
+			for(i = 0; i < contCount; i++) {
+				if(strcmp(contato_temp.numero, cont[i].numero) == 0) {
+					flag = -1;
+					break;
+				}
+			}
+			if (send(ns, &flag, sizeof(int), 0) == -1) {
+			
+				perror("Send()");
+				exit(6);
+			}
+	
+			if(flag == 1) {
+				strcpy(cont[contCount].numero, contato_temp.numero);
+				strcpy(cont[contCount].ip, contato_temp.ip);
+				cont[contCount].porta = contato_temp.porta;
+				printf("Numero conectado: %s - IP: %s - Porta: %d\n", cont[contCount].numero, cont[contCount].ip, cont[contCount].porta);
+				contCount++;
+			}
+			pthread_mutex_unlock(&mutex);
+			if(flag == -1)
+				break;
 		}
-		else if(opcao == 2) {
-
+		else if(opcao == 2) {//Envio de dados sobre um numero
+			
+			env = -1;
 			if (recv(ns, &numLen, sizeof(int), 0) == -1) {
 			
 				perror("Recv()");
@@ -74,36 +97,82 @@ void *tratamento(void *informacoes) {
 				perror("Recv()");
 				exit(6);
 			}
-
-			for (int i = 0; i < contCount; ++i) {
+			pthread_mutex_lock(&mutex);
+			for (i = 0; i < contCount; ++i) {
 
 				if(strcmp(cont[i].numero, num) == 0) {
 
 					env = i;
 				}
 			}
-
-			strcpy(ip, cont[env].ip);
-			porta = cont[env].porta;
-			numLen = strlen(ip);
-
-			if (send(ns, &numLen, sizeof(int), 0) == -1) {
+			if(env != -1) {
+				strcpy(ip, cont[env].ip);
+				porta = cont[env].porta;
+				numLen = strlen(ip);
+				
+				pthread_mutex_unlock(&mutex);
+				if (send(ns, &numLen, sizeof(int), 0) == -1) {
 			
-				perror("Send()");
-				exit(6);
-			}			
+					perror("Send()");
+					exit(6);
+				}			
 
-			if (send(ns, ip, numLen, 0) == -1) {
+				if (send(ns, ip, numLen, 0) == -1) {
 			
-				perror("Send()");
+					perror("Send()");
+					exit(6);
+				}
+
+				if (send(ns, &porta, sizeof(int), 0) == -1) {
+			
+					perror("Send()");
+					exit(6);
+				}
+				printf("Enviados os dados sobre o numero: %s\n", num);
+			}
+			if(env == -1) {
+				pthread_mutex_unlock(&mutex);
+				numLen = -1;
+				if (send(ns, &numLen, sizeof(int), 0) == -1) {
+			
+					perror("Send()");
+					exit(6);
+				}
+			} 
+		}
+		else if(opcao == 3) {//Remoção do usuário do servidor
+			 
+			if (recv(ns, &numLen, sizeof(int), 0) == -1) {
+			
+				perror("Recv()");
 				exit(6);
 			}
 
-			if (send(ns, &porta, sizeof(int), 0) == -1) {
-			
-				perror("Send()");
+			if (recv(ns, num, numLen, 0) == -1) {
+				
+				perror("Recv()");
 				exit(6);
+			}	
+			i = 0;
+			flag = 0;
+			pthread_mutex_lock(&mutex);
+			while(i < contCount) {
+				
+				if(flag == 0 && strcmp(cont[i].numero,num) == 0) {
+					flag = 1;				
+				}
+				if(flag == 1 && i < contCount - 1) {
+					strcpy(cont[i].numero,cont[i + 1].numero);
+					strcpy(cont[i].ip,cont[i + 1].ip);
+					cont[i].porta = cont[i + 1].porta;
+				}
+				i++;
 			}
+			contCount--;
+			pthread_mutex_unlock(&mutex);
+			printf("Numero removido do servidor: %s\n", num);
+			
+			break;
 		}
 	}
 }
@@ -122,9 +191,9 @@ int main(int argc, char **argv) {
 
 	if (pthread_mutex_init(&mutex, NULL) != 0) {
 
-        printf("falha iniciacao semaforo\n");
-       	return 1; 
-    }
+		printf("Falha de iniciacao de mutex\n");
+	       	return 1; 
+    	}
 	
 	if (argc != 2) {
 
@@ -145,16 +214,16 @@ int main(int argc, char **argv) {
    	server.sin_addr.s_addr = INADDR_ANY;
 
 		 
-    if (bind(s, (struct sockaddr *)&server, sizeof(server)) < 0) {
+    	if (bind(s, (struct sockaddr *)&server, sizeof(server)) < 0) {
        		
-       	perror("Bind()");
-       	exit(3);
+	       	perror("Bind()");
+	       	exit(3);
    	}
 
 	if (listen(s, 1) != 0) {
 
 		perror("Listen()");
-       	exit(4);
+       		exit(4);
    	}
 	namelen = sizeof(client);
 
@@ -165,23 +234,18 @@ int main(int argc, char **argv) {
 			perror("Accept()");
 			exit(5);
 		}
-    		/*
-		 * Cria uma thread para atender o cliente
-		 */
+
 		informacoes.ns = ns;
 		informacoes.client = client;
     	
-    	tc = pthread_create(&tratarClientes, NULL, tratamento, &informacoes);
-    	if (tc) {
+	    	tc = pthread_create(&tratarClientes, NULL, tratamento, &informacoes);
+	    	if (tc) {
 
-     		printf("ERRO: impossivel criar um thread consumidor\n");
-      		exit(-1);
-    	}
-		/*
-		 * A thread principal dorme por um pequeno período de tempo
-		 * para a thread de tratamento retirar as informacoes do client
-		 */
-    	usleep(250);
+	     		printf("ERRO: impossivel criar um thread consumidor\n");
+	      		exit(-1);
+	    	}
+
+    		usleep(250);
   	}
 }
 
