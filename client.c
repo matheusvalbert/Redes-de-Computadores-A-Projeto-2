@@ -208,7 +208,7 @@ void *tratamento(void *informacoes) {
 			perror("Recv()");
 			exit(6);
 		}
-
+		numeroEnviar[len2] = '\0';
 		if (recv(ns, &len1, sizeof(int), 0) == -1) {
 			
 			perror("Recv()");
@@ -220,6 +220,7 @@ void *tratamento(void *informacoes) {
 			perror("Recv()");
 			exit(6);
 		}
+		mensagemParaContato[len1] = '\0';
 		flag = 0;
 		pthread_mutex_lock(&mutexContatos);
 		for(i = 0; i < numeroContatos; i++) {
@@ -229,7 +230,6 @@ void *tratamento(void *informacoes) {
 			}
 		}
 		pthread_mutex_unlock(&mutexContatos);
-		usleep(100);
 		if(flag == 0)
 			printf("Mensagem recebida de %s: %s\n", numeroEnviar, mensagemParaContato);
 	}
@@ -294,7 +294,7 @@ void *tratamento(void *informacoes) {
 			perror("Recv()");
 			exit(6);
 		}
-
+		mensagemGrupo[len2] = '\0';
 
 		if (recv(ns, &tamanhoNomeGrupo, sizeof(int), 0) == -1) {
 				
@@ -308,7 +308,7 @@ void *tratamento(void *informacoes) {
 			exit(6);
 		}
 		nomeGrupo[tamanhoNomeGrupo]='\0';
-		printf("tamanho - %i - nome - %s\n", tamanhoNomeGrupo, nomeGrupo);
+
 		if (recv(ns, &len2, sizeof(int), 0) == -1) {
 				
 			perror("Recv()");
@@ -330,12 +330,8 @@ void *tratamento(void *informacoes) {
 			}
 		}
 		pthread_mutex_unlock(&mutexContatos);
-		usleep(100);
 		if(flag == 0)
 			printf("Mensagem recebida de: %s no grupo: %s : %s\n", nCont, nomeGrupo, mensagemGrupo);
-		/*for(i = 0; i < tamanhoNomeGrupo; i++)
-			printf("%c", nomeGrupo[i]);
-		printf(": %s\n", mensagemGrupo);*/
 	}
 	else if(funcao == 4) {//Area de tratamento para receber imagens de Contatos
 
@@ -397,7 +393,6 @@ void *tratamento(void *informacoes) {
 		
 		flag = 0;
 		pthread_mutex_lock(&mutexContatos);
-		usleep(100);
 		for(i = 0; i < numeroContatos; i++) {
 			if(strcmp(numeroEnviar,contatos[i].numero) == 0) {
 				printf("Imagem recebida de %s: %s\n", contatos[i].nome, nomeArquivo);
@@ -486,14 +481,10 @@ void *tratamento(void *informacoes) {
 				flag = 1;
 			}
 		}
-		usleep(200);
 		pthread_mutex_unlock(&mutexContatos);
 		
 		if(flag == 0)
 			printf("Imagem recebida de: %s no grupo: %s : %s\n", nCont, nomeGrupo, nomeArquivo);
-		/*for(i = 0; i < tamanhoNomeGrupo; i++)
-			printf("%c", nomeGrupo[i]);
-		printf(": %s\n", nomeArquivo);*/
 	}
 
 	close(ns);
