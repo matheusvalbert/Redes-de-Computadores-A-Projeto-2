@@ -128,7 +128,6 @@ void enviarInformacoes(int s) {
     	  	exit(0);
     	}
 
-
 	struct sockaddr_in _self;
     	int len = sizeof (_self);
 
@@ -308,8 +307,8 @@ void *tratamento(void *informacoes) {
 			perror("Recv()");
 			exit(6);
 		}
-		
-		nomeGrupo[len2]='\0';
+		nomeGrupo[tamanhoNomeGrupo]='\0';
+		printf("tamanho - %i - nome - %s\n", tamanhoNomeGrupo, nomeGrupo);
 		if (recv(ns, &len2, sizeof(int), 0) == -1) {
 				
 			perror("Recv()");
@@ -326,17 +325,17 @@ void *tratamento(void *informacoes) {
 		pthread_mutex_lock(&mutexContatos);
 		for(i = 0; i < numeroContatos; i++) {
 			if(strcmp(nCont,contatos[i].numero) == 0) {
-				printf("Mensagem recebida de: %s no grupo: ", contatos[i].nome);
+				printf("Mensagem recebida de: %s no grupo: %s : %s\n", contatos[i].nome, nomeGrupo, mensagemGrupo);
 				flag = 1;
 			}
 		}
 		pthread_mutex_unlock(&mutexContatos);
 		usleep(100);
 		if(flag == 0)
-			printf("Mensagem recebida de: %s no grupo: ", nCont);
-		for(i = 0; i < tamanhoNomeGrupo; i++)
+			printf("Mensagem recebida de: %s no grupo: %s : %s\n", nCont, nomeGrupo, mensagemGrupo);
+		/*for(i = 0; i < tamanhoNomeGrupo; i++)
 			printf("%c", nomeGrupo[i]);
-		printf(": %s\n", mensagemGrupo);
+		printf(": %s\n", mensagemGrupo);*/
 	}
 	else if(funcao == 4) {//Area de tratamento para receber imagens de Contatos
 
@@ -352,7 +351,7 @@ void *tratamento(void *informacoes) {
 			perror("Recv()");
 			exit(6);
 		}
-		
+		nCont[len2] = '\0';
 		if (recv(ns, &len2, sizeof(int), 0) == -1) {
 				
 			perror("Recv()");
@@ -364,7 +363,7 @@ void *tratamento(void *informacoes) {
 			perror("Recv()");
 			exit(6);
 		}
-
+		nomeArquivo[len2] = '\0';
 		if (recv(ns, &len1, sizeof(int), 0) == -1) {
 
 			perror("Recv()");
@@ -422,7 +421,7 @@ void *tratamento(void *informacoes) {
 			perror("Recv()");
 			exit(6);
 		}
-
+		nomeGrupo[tamanhoNomeGrupo] = '\0';
 		if (recv(ns, &len2, sizeof(int), 0) == -1) {
 				
 			perror("Recv()");
@@ -434,7 +433,7 @@ void *tratamento(void *informacoes) {
 			perror("Recv()");
 			exit(6);
 		}
-
+		nCont[len2] = '\0';
 		if (recv(ns, &len2, sizeof(int), 0) == -1) {
 				
 			perror("Recv()");
@@ -446,7 +445,7 @@ void *tratamento(void *informacoes) {
 			perror("Recv()");
 			exit(6);
 		}
-
+		nomeArquivo[len2] = '\0';
 		if (recv(ns, &len1, sizeof(int), 0) == -1) {
 
 			perror("Recv()");
@@ -483,18 +482,18 @@ void *tratamento(void *informacoes) {
 		pthread_mutex_lock(&mutexContatos);
 		for(i = 0; i < numeroContatos; i++) {
 			if(strcmp(nCont,contatos[i].numero) == 0) {
-				printf("Imagem recebida de: %s no grupo: ", contatos[i].nome);
+				printf("Imagem recebida de: %s no grupo: %s : %s\n", contatos[i].nome, nomeGrupo, nomeArquivo);
 				flag = 1;
 			}
 		}
-		usleep(100);
+		usleep(200);
 		pthread_mutex_unlock(&mutexContatos);
 		
 		if(flag == 0)
-			printf("Imagem recebida de: %s no grupo: ", nCont);
-		for(i = 0; i < tamanhoNomeGrupo; i++)
+			printf("Imagem recebida de: %s no grupo: %s : %s\n", nCont, nomeGrupo, nomeArquivo);
+		/*for(i = 0; i < tamanhoNomeGrupo; i++)
 			printf("%c", nomeGrupo[i]);
-		printf(": %s\n", nomeArquivo);
+		printf(": %s\n", nomeArquivo);*/
 	}
 
 	close(ns);
@@ -734,6 +733,7 @@ void enviarMensagemContato(int s, char numCliente[]) {//Envio dos dados do conta
 			perror("Recv()");
 			exit(6);
 		}
+		ip[numLen] = '\0';
 
 		if (recv(s, &porta, sizeof(int), 0) == -1) {
 		
@@ -1046,6 +1046,8 @@ void criarGrupo(int s, char numCliente[]) {//Função de criação de grupos
 
 	__fpurge(stdin);
 	fgets(nomeGrupo, sizeof(nomeGrupo), stdin);
+	if(nomeGrupo[strlen(nomeGrupo) - 1] == '\n')
+		nomeGrupo[strlen(nomeGrupo) - 1] = '\0';
 
 	printf("Numero de pessoas no grupo: ");
 
@@ -1243,54 +1245,56 @@ void enviarMensagemGrupo(int s, char numCliente[]) {//Função para receber os d
 
 	for (int i = 0; i < classificacaoGrupo[numero - 1].numero; i++) {
 
-		if (send(s, &op, sizeof(int), 0) == -1) {
-			
-			perror("Recv()");
-			exit(6);
-		}
-
-		strcpy(num, classificacaoGrupo[numero - 1].pessoas[i]);
-
-		numLen = strlen(num);
-
-		if (send(s, &numLen, sizeof(int), 0) == -1) {
-			
-			perror("Recv()");
-			exit(6);
-		}
-
-		if (send(s, num, numLen, 0) == -1) {
-			
-			perror("Recv()");
-			exit(6);
-		}
-
-		if (recv(s, &numLen2, sizeof(int), 0) == -1) {
+		if(strcmp(classificacaoGrupo[numero - 1].pessoas[i],numCliente) != 0) {
+			if (send(s, &op, sizeof(int), 0) == -1) {
 				
-			perror("Send()");
-			exit(6);
-		}
-
-		if(numLen2 != -1) {
-
-			if (recv(s, ip, numLen2, 0) == -1) {
-			
 				perror("Recv()");
 				exit(6);
 			}
 
-			if (recv(s, &porta, sizeof(int), 0) == -1) {
-			
+			strcpy(num, classificacaoGrupo[numero - 1].pessoas[i]);
+
+			numLen = strlen(num);
+
+			if (send(s, &numLen, sizeof(int), 0) == -1) {
+				
 				perror("Recv()");
 				exit(6);
 			}
-			ip[numLen2] = '\0';
 
-			enviarGrupo(ip, porta, mensagemGrupo, nomeGrupo, numCliente);
-		}
-		else {
-			vetor[flag] = i;
-			flag++;
+			if (send(s, num, numLen, 0) == -1) {
+				
+				perror("Recv()");
+				exit(6);
+			}
+
+			if (recv(s, &numLen2, sizeof(int), 0) == -1) {
+					
+				perror("Send()");
+				exit(6);
+			}
+
+			if(numLen2 != -1) {
+
+				if (recv(s, ip, numLen2, 0) == -1) {
+				
+					perror("Recv()");
+					exit(6);
+				}
+
+				if (recv(s, &porta, sizeof(int), 0) == -1) {
+				
+					perror("Recv()");
+					exit(6);
+				}
+				ip[numLen2] = '\0';
+
+				enviarGrupo(ip, porta, mensagemGrupo, nomeGrupo, numCliente);
+			}
+			else {
+				vetor[flag] = i;
+				flag++;
+			}
 		}
 	}
 	if(flag > 0) {
